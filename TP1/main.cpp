@@ -6,7 +6,6 @@
 using namespace std;
 
 int main(){
-  //Matrix M(1, 1);
   ifstream in("myMatrix.txt");
   Matrix Y;
   Matrix X(3, 1), A(3,3), C(3,3);
@@ -65,7 +64,7 @@ int main(){
   
   vector<double> vec{1, 2, 3, 4, 5, 6};
   Matrix M(2, 3, vec);
-  cout << "Construtor de Matriz via vector--> Matrix M(2, 3, vec); :" << endl << M << endl;
+  cout << "Construtor de Matriz via ponteiro--> Matrix M(2, 3, vec); :" << endl << M << endl;
 
   vector<double> vec2{1, 2, 3, 4};
   Matrix MM(3, 2, vec2);
@@ -118,23 +117,29 @@ int main(){
   }
 
   try{
-    cout << "Tentando alterar os elementos de uma matriz por entrada padrao, com numero diferente de elementos:" << endl;
-    stringstream s;
-    s << "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15";
-    s >> N;
-  }
-  catch(const exception& e){
-    cout << e.what() << '\n' << endl;
-  }
-
-  try{
     cout << "Tentando alterar elemento inexistente--> N(10, 10) = 100; :" << endl;
     N(10, 10) = 100;
   }
   catch(const exception& e){
     cout << e.what() << '\n' << endl;
   }
-  
+
+  try{
+    cout << "Tentando realizar soma matricial (4 x 1) + (1 x 4) --> Matrix e2 = N + ~N;" << endl;
+    Matrix e2 = N + ~N;
+  }
+  catch(const exception& e){
+    cout << e.what() << '\n' << endl;
+  }
+
+  try{
+    cout << "Tentando realizar subtracao matricial (1 x 4) - (4 x 1) --> Matrix e2 = ~N - N;" << endl;
+    Matrix e2 = ~N - N;
+  }
+  catch(const exception& e){
+    cout << e.what() << '\n' << endl;
+  }
+
   try{
     cout << "Tentando realizar multiplicacao matricial (4 x 1) * (4 x 1) --> Matrix e2 = N * N;" << endl;
     Matrix e2 = N * N;
@@ -146,6 +151,16 @@ int main(){
   try{
     cout << "Tentando realizar multiplicacao matricial (4 x 1) * (4 x 1) --> N *= N;" << endl;
     N *= N;
+  }
+  catch(const exception& e){
+    cout << e.what() << '\n' << endl;
+  }
+
+  try{
+    cout << "Tentando alterar os elementos de uma matriz por entrada padrao, com numero diferente de elementos:" << endl;
+    stringstream s;
+    s << "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15";
+    s >> N;
   }
   catch(const exception& e){
     cout << e.what() << '\n' << endl;

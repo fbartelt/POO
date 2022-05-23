@@ -7,6 +7,7 @@
 #include <vector>
 using namespace std;
 
+// Workaround para definid operator>> e operator<< com template
 template <class Tvalor>
 class Matrix;
 
@@ -15,11 +16,12 @@ ostream &operator<<(ostream &os, const Matrix<Tvalor> &mat);
 
 template <class Tvalor>
 istream &operator>>(istream &is, Matrix<Tvalor> &mat);
+// Fim do workaround
 
 template <class Tvalor = double>
 class Matrix {
  private:
-  vector<Tvalor> m;
+  Tvalor *m;
   int rows;
   int cols;
   friend ostream &operator<<<>(ostream &os, const Matrix<Tvalor> &mat);
@@ -27,24 +29,45 @@ class Matrix {
 
  public:
   // Construtor default
-  Matrix() : rows(0), cols(0), m(vector<Tvalor>(0, 0)){};
+  Matrix() : rows(0), cols(0), m(new Tvalor(0)){};
   // Construtor de matriz cujos elementos sao todos iguais a <val>
   Matrix(int t_rows, int t_cols, const Tvalor &val = 0.0)
-      : rows(t_rows), cols(t_cols), m(vector<Tvalor>(t_rows * t_cols, val)){};
-  // Construtor de matriz cujos elementos sao dados por um vetor 1D
+      : rows(t_rows), cols(t_cols), m(new Tvalor[t_rows * t_cols]) {
+    for (int i = 0; i < t_rows * t_cols; i++) {
+      m[i] = val;
+    }
+  };
+  // Construtor de matriz cujos elementos sao dados por um ponteiro
+  Matrix(int t_rows, int t_cols, const Tvalor *vec)
+      : rows(t_rows), cols(t_cols), m(new Tvalor[t_rows * t_cols]) {
+    for (int i = 0; i < t_rows * t_cols; i++) {
+      m[i] = vec[i];
+    }
+  };
+  // Construtor de matriz cujos elementos sao dados por um vetor
   Matrix(int t_rows, int t_cols, const vector<Tvalor> &vec)
-      : rows(t_rows), cols(t_cols), m(vec) {
-    while (m.size() < rows * cols) {
-      m.push_back(0.0);
+      : rows(t_rows), cols(t_cols), m(new Tvalor[t_rows * t_cols]) {
+    for (int i = 0; i < t_rows * t_cols; i++) {
+      if (i < vec.size())
+        m[i] = vec.at(i);
+      else
+        m[i] = 0;
     }
   };
   // Construtor por copia
   Matrix(const Matrix<Tvalor> &mat)
-      : rows(mat.rows), cols(mat.cols), m(mat.m){};
+      : rows(mat.rows), cols(mat.cols), m(new Tvalor[mat.rows * mat.cols]) {
+    for (int i = 0; i < mat.cols * mat.rows; i++) {
+      m[i] = mat.m[i];
+    }
+  };
   // Construtor por arquivo
   Matrix(ifstream &myFile);
   // Destrutor
-  ~Matrix(){};
+  ~Matrix() {
+    cout << "~Matrix()" << endl;
+    delete[] m;
+  };
 
   // Getters
   //  Retorna o numero de linhas da matriz
@@ -61,6 +84,8 @@ class Matrix {
   // Operators
   //  Acesso a elementos, com primeiro indice = 1
   Tvalor &operator()(int row, int col);
+  //  Atribuicao
+  Matrix &operator=(const Matrix &mat);
   // Soma de matrizes
   Matrix operator+(const Matrix &mat) const;
   // Soma de matrizes com atribuicao
@@ -86,34 +111,40 @@ class Matrix {
 
 template <class Tvalor>
 Matrix<Tvalor>::Matrix(ifstream &myFile) {
-  vector<Tvalor> m_tmp;
+  Tvalor *m_tmp = new Tvalor[0];
   Tvalor tmp;
-  int r = 1, c = 0, last = -1;
+  int r = 1, c = 0, last = 0, counter = 0;
 
   while (myFile >> tmp) {
+    counter++;
     c++;
     if (myFile.peek() == '\n') {
       r++;
-      if (last == -1 || c == last)
+      if (last == 0 || c == last)
         last = c;
-      else if (last != -1 && c != last)
+      else if (last != 0 && c != last)
         throw invalid_argument(
             "Inconsistent number of columns. The file must contain column "
             "elements separated by white spaces and row elements separated by "
             "line breaks.");
       c = 0;
     }
-    m_tmp.push_back(tmp);
+    Tvalor *aux = new Tvalor[counter];
+    copy(m_tmp, m_tmp + counter - 1, aux);
+    aux[counter - 1] = tmp;
+    delete[] m_tmp;
+    m_tmp = aux;
+    aux = nullptr;
   }
-  if (m_tmp.size() != last * r)
+  if (counter != c * r) {
     throw invalid_argument(
         "Inconsistent number of columns. The file must contain column elements "
         "separated by white spaces and row elements separated by line breaks.");
-  // cout << "r: " << r << endl;
-  // cout << "c: " << last << endl;
+  }
   rows = r;
   cols = last;
   m = m_tmp;
+  m_tmp = nullptr;
 }
 
 template <class Tvalor>
@@ -130,7 +161,7 @@ template <class Tvalor>
 inline Tvalor Matrix<Tvalor>::get(int row, int col) const {
   if (rows < row || cols < col || col < 1 || row < 1)
     throw invalid_argument("Index out of bounds.");
-  return m.at(cols * (row - 1) + (col - 1));
+  return m[(cols * (row - 1) + (col - 1))];
 }
 
 template <class Tvalor>
@@ -149,20 +180,14 @@ inline void Matrix<Tvalor>::reshape(int row, int col) {
 
 template <class Tvalor>
 ostream &operator<<(ostream &os, const Matrix<Tvalor> &mat) {
-  int counter = 0;
-
-  for (Tvalor i : mat.m) {
+  for (int counter = 0; counter < mat.rows * mat.cols; counter++) {
+    Tvalor i = mat.m[counter];
     if (!(counter % mat.cols)) {
       os << " | ";
     }
-
-    counter++;
-    //    os << "" << i << "\t";
-
-    if (!(counter % mat.cols) && counter != 0) {
+    if (!((counter + 1) % mat.cols)) {
       os << i << " |\n";
     } else {
-      // os << "";
       os << i << "    ";
     }
   }
@@ -171,12 +196,17 @@ ostream &operator<<(ostream &os, const Matrix<Tvalor> &mat) {
 
 template <class Tvalor>
 istream &operator>>(istream &is, Matrix<Tvalor> &mat) {
+  Tvalor *m_tmp = new Tvalor[0];
   Tvalor tmp;
-  vector<Tvalor> tmp_vec;
   int elements = 0;
   while (is >> tmp) {
-    tmp_vec.push_back(tmp);
     elements++;
+    Tvalor *aux = new Tvalor[elements];
+    copy(m_tmp, m_tmp + elements - 1, aux);
+    aux[elements - 1] = tmp;
+    delete[] m_tmp;
+    m_tmp = aux;
+    aux = nullptr;
     if (cin.peek() == '\n') {
       cin.clear(ios::eofbit);
     }
@@ -190,7 +220,8 @@ istream &operator>>(istream &is, Matrix<Tvalor> &mat) {
   } else if (elements != (mat.rows * mat.cols)) {
     throw invalid_argument("Number of elements should be equal to rows * cols");
   }
-  mat.m.swap(tmp_vec);
+  mat.m = m_tmp;
+  m_tmp = nullptr;
   return is;
 }
 
@@ -198,83 +229,92 @@ template <class Tvalor>
 inline Tvalor &Matrix<Tvalor>::operator()(int row, int col) {
   if (rows < row || cols < col || col < 1 || row < 1)
     throw invalid_argument("Index out of bounds.");
-  return m.at(cols * (row - 1) + (col - 1));
+  return m[(cols * (row - 1) + (col - 1))];
+}
+
+template <class Tvalor>
+Matrix<Tvalor> &Matrix<Tvalor>::operator=(const Matrix &mat) {
+  if (this != &mat) {
+    rows = mat.rows;
+    cols = mat.cols;
+    m = nullptr;
+    m = new Tvalor[mat.cols * mat.rows];
+    copy(mat.m, mat.m + (mat.cols * mat.rows), m);
+  }
+  return *this;
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator+(const Matrix<Tvalor> &mat) const {
-  Matrix<Tvalor> tmp(*this);
-  transform(tmp.m.begin(), tmp.m.end(), mat.m.begin(), tmp.m.begin(),
-            plus<Tvalor>());
-  return tmp;
+  if (this->cols != mat.cols || this->rows != mat.rows)
+    throw invalid_argument("Matrices must have equal dimensions");
+  Tvalor *tmp = new Tvalor[this->cols * this->rows];
+  for (int i = 0; i < (this->cols * this->rows); i++) {
+    tmp[i] = this->m[i] + mat.m[i];
+  }
+  return Matrix(rows, cols, tmp);
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator+=(const Matrix<Tvalor> &mat) {
-  transform(m.begin(), m.end(), mat.m.begin(), m.begin(), plus<Tvalor>());
+  if (this->cols != mat.cols || this->rows != mat.rows)
+    throw invalid_argument("Matrices must have equal dimensions");
+  for (int i = 0; i < (this->cols * this->rows); i++) {
+    this->m[i] += mat.m[i];
+  }
   return *this;
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator-(const Matrix<Tvalor> &mat) const {
-  Matrix<Tvalor> tmp(*this);
-  transform(tmp.m.begin(), tmp.m.end(), mat.m.begin(), tmp.m.begin(),
-            minus<Tvalor>());
-  return tmp;
-}
-
-template <class Tvalor>
-Matrix<Tvalor> Matrix<Tvalor>::operator~() const {
-  vector<Tvalor> vec(cols * rows, 0);
-  int counter = 0;
-  for (auto i : m) {
-    int k = counter / cols;
-    int j = (counter - (k * cols)) * (rows) + k;
-    // cout << counter << "  " << k << "  " << j << endl;
-    vec[j] = i;
-    counter++;
+  if (this->cols != mat.cols || this->rows != mat.rows)
+    throw invalid_argument("Matrices must have equal dimensions");
+  Tvalor *tmp = new Tvalor[this->cols * this->rows];
+  for (int i = 0; i < (this->cols * this->rows); i++) {
+    tmp[i] = this->m[i] - mat.m[i];
   }
-  Matrix<Tvalor> transposed(cols, rows, vec);
-  return transposed;
+  return Matrix(rows, cols, tmp);
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator-=(const Matrix<Tvalor> &mat) {
-  transform(m.begin(), m.end(), mat.m.begin(), m.begin(), minus<Tvalor>());
+  if (this->cols != mat.cols || this->rows != mat.rows)
+    throw invalid_argument("Matrices must have equal dimensions");
+  for (int i = 0; i < (this->cols * this->rows); i++) {
+    this->m[i] -= mat.m[i];
+  }
   return *this;
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator*(const Tvalor &val) const {
-  Matrix<Tvalor> m2(*this);
-  vector<Tvalor> vec(rows * cols, val);
-  transform(m2.m.begin(), m2.m.end(), vec.begin(), m2.m.begin(),
-            multiplies<Tvalor>());
-  return m2;
+  Tvalor *tmp = new Tvalor[cols * rows];
+  for (int i = 0; i < (cols * rows); i++) {
+    tmp[i] = val * this->m[i];
+  }
+  return Matrix<Tvalor>(rows, cols, tmp);
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator*=(const Tvalor &val) {
-  vector<Tvalor> vec(rows * cols, val);
-  transform(m.begin(), m.end(), vec.begin(), m.begin(), multiplies<Tvalor>());
+  for (int i = 0; i < (cols * rows); i++) {
+    this->m[i] *= val;
+  }
   return *this;
 }
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator*(const Matrix &mat) const {
-  if (cols != mat.rows)
+  if (cols != mat.rows) {
     throw invalid_argument(
         "The number of columns in the first matrix must be equal to the number "
         "of rows in the second matrix.");
+  }
   Matrix m3(rows, mat.cols, 0.0);
   for (int i = 1; i <= rows; i++) {
     for (int j = 1; j <= mat.cols; j++) {
       for (int k = 1; k <= mat.rows; k++) {
-        // m3(i, j) += mat(k, j) * this->operator()(i, k);
         m3(i, j) += mat.get(k, j) * get(i, k);
-        // cout << "A[" << i << ", " << j << "] = " <<"x[" << i << ", " << k <<
-        // "] * y[" << k << ", " << j << "]" << endl; cout << " " << m3(i, j) <<
-        // " =\t " << this->operator()(i, k) << "  " << mat(k, j) << endl;
       }
     }
   }
@@ -283,15 +323,15 @@ Matrix<Tvalor> Matrix<Tvalor>::operator*(const Matrix &mat) const {
 
 template <class Tvalor>
 Matrix<Tvalor> Matrix<Tvalor>::operator*=(const Matrix &mat) {
-  if (cols != mat.rows)
+  if (cols != mat.rows) {
     throw invalid_argument(
         "The number of columns in the first matrix must be equal to the number "
         "of rows in the second matrix.");
+  }
   Matrix m3(rows, mat.cols, 0.0);
   for (int i = 1; i <= rows; i++) {
     for (int j = 1; j <= mat.cols; j++) {
       for (int k = 1; k <= mat.rows; k++) {
-        // m3(i, j) += mat(k, j) * this->operator()(i, k);
         m3(i, j) += mat.get(k, j) * get(i, k);
       }
     }
@@ -302,17 +342,38 @@ Matrix<Tvalor> Matrix<Tvalor>::operator*=(const Matrix &mat) {
 }
 
 template <class Tvalor>
+Matrix<Tvalor> Matrix<Tvalor>::operator~() const {
+  Tvalor *aux = new Tvalor[cols * rows];
+  for (int counter = 0; counter < cols * rows; counter++) {
+    int k = counter / cols;
+    int j = (counter - (k * cols)) * (rows) + k;
+    aux[j] = m[counter];
+  }
+  return Matrix<Tvalor>(cols, rows, aux);
+}
+
+template <class Tvalor>
 bool Matrix<Tvalor>::operator==(const Matrix<Tvalor> &mat) const {
-  bool ret = (m == mat.m);
   bool tmp = (rows == mat.rows && cols == mat.cols);
+  bool ret = true;
+  if (tmp) {
+    for (int i = 0; i < cols * rows; i++) {
+      ret = ret && (m[i] == mat.m[i]);
+    }
+  }
   ret = ret && tmp;
   return ret;
 }
 
 template <class Tvalor>
 bool Matrix<Tvalor>::operator!=(const Matrix<Tvalor> &mat) const {
-  bool ret = (m != mat.m);
   bool tmp = (rows != mat.rows || cols != mat.cols);
+  bool ret = true;
+  if (!tmp) {
+    for (int i = 0; i < cols * rows; i++) {
+      ret = ret && (m[i] != mat.m[i]);
+    }
+  }
   ret = ret || tmp;
   return ret;
 }
