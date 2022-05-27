@@ -16,7 +16,7 @@ class Ponto3D : public Ponto2D {
     this->Ponto2D::set(nx, ny);
     z = nz;
   };
-  double get_z();
+  double get_z() const;
 
  private:
   double z;
@@ -30,7 +30,7 @@ ostream &operator<<(ostream &op, const Ponto3D &p) {
   return op;
 }
 
-inline double Ponto3D::get_z(){
+inline double Ponto3D::get_z() const{
   return z;
 }
 
