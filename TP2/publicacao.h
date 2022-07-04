@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "bibexceptions.h"
+
 using namespace std;
 
 class Publicacao {
@@ -23,20 +25,17 @@ class Publicacao {
         editora(t_editora),
         ano(t_ano){};
   virtual ~Publicacao(){};
-  virtual void emprestimo() {
-    cout << "Metodo ainda nao implementado para essa classe" << endl;
-  };
-  virtual void devolucao() {
-    cout << "Metodo ainda nao implementado para essa classe" << endl;
-  };
-  virtual ostream &print(ostream &op) const{return op;};
+  virtual void emprestimo() = 0;
+  virtual void devolucao() = 0;
+  virtual ostream &print(ostream &op) const { return op; };
   ostream &print_(ostream &op) const;
   friend ostream &operator<<(ostream &op, Publicacao const &t_publicacao);
-  string get_titulo() const { return titulo; };
   int get_codigo() const { return codPublicacao; };
+  string get_titulo() const { return titulo; };
   string get_editora() const { return editora; };
   int get_ano() const { return ano; };
-  // bool operator==(Publicacao const &t_publicacao);
+  bool compare(Publicacao const &t_publicacao) const;
+  virtual bool operator==(Publicacao const &t_publicacao) const = 0;
 };
 
 class Livro : public Publicacao {
@@ -59,9 +58,8 @@ class Livro : public Publicacao {
   void devolucao();
   string get_autores() const { return autores; };
   int get_qtdExemplares() const { return qtdeExemplares; };
-  // friend ostream &operator<<(ostream &op, Livro const &t_livro);
   ostream &print(ostream &op) const override;
-  bool operator==(Livro const &t_livro) const;
+  bool operator==(Publicacao const &t_publicacao) const;
 };
 
 class Periodico : public Publicacao {
@@ -79,41 +77,52 @@ class Periodico : public Publicacao {
   void devolucao();
   string get_mes() const { return mes; };
   int get_numEdicao() const { return numEdicao; };
-  // friend ostream &operator<<(ostream &op, Periodico const &t_periodico);
   ostream &print(ostream &op) const override;
-  bool operator==(Periodico const &t_periodico) const;
+  bool operator==(Publicacao const &t_publicacao) const;
 };
 
 inline void Livro::emprestimo() {
   if (qtdeExemplares > 0) {
     qtdeExemplares -= 1;
   } else
-    throw out_of_range("Nao há mais livros para empréstimo.");
+    throw EmprestimoExcpetion("Nao há mais livros para empréstimo.");
 }
 
 inline void Periodico::emprestimo() {
-  throw domain_error("Periodicos nao poder ser emprestados.");
+  throw EmprestimoExcpetion("Periodicos nao poder ser emprestados.");
 }
 
 inline void Livro::devolucao() { qtdeExemplares += 1; }
 
 inline void Periodico::devolucao() {
-  throw domain_error("Periodicos nao poderiam ter sido emprestados.");
+  throw DevolucaoExcpetion("Periodicos nao poderiam ter sido emprestados.");
 }
 
-// bool Publicacao::operator==(Publicacao const &t_publicacao) {
-//   return ((codPublicacao == t_publicacao.codPublicacao) &&
-//           (titulo == t_publicacao.titulo) && (ano == t_publicacao.ano) &&
-//           (editora == t_publicacao.editora));
-// }
-
-bool Periodico::operator==(Periodico const &t_periodico) const {
-  return ((mes == t_periodico.mes) && (numEdicao && t_periodico.numEdicao));
+bool Publicacao::compare(Publicacao const &t_publicacao) const {
+  return ((titulo == t_publicacao.titulo) && (ano == t_publicacao.ano) &&
+          (codPublicacao == t_publicacao.codPublicacao) &&
+          (editora == t_publicacao.editora));
 }
 
-bool Livro::operator==(Livro const &t_livro) const{
-  return ((autores == t_livro.autores) &&
-          (qtdeExemplares && t_livro.qtdeExemplares));
+bool Periodico::operator==(Publicacao const &t_publicacao) const {
+  bool ret = true;
+  const Periodico *pd = dynamic_cast<const Periodico *>(&t_publicacao);
+  if (pd != nullptr)
+    ret = ((mes == pd->mes) && (numEdicao == pd->numEdicao) &&
+           (this->compare(t_publicacao)));
+  else
+    ret = false;
+  return ret;
+}
+
+bool Livro::operator==(Publicacao const &t_publicacao) const {
+  bool ret = true;
+  const Livro *lv = dynamic_cast<const Livro *>(&t_publicacao);
+  if (lv != nullptr)
+    ret = ((autores == lv->autores) && (this->compare(t_publicacao)));
+  else
+    ret = false;
+  return ret;
 }
 
 ostream &Publicacao::print_(ostream &op) const {
@@ -129,19 +138,7 @@ ostream &operator<<(ostream &op, Publicacao const &t_publicacao) {
   ostream &op2 = t_publicacao.print_(op);
   return t_publicacao.print(op2);
 }
-// ostream &operator<<(ostream &op, Livro const &t_livro) {
-//   ostream &op2 = t_livro.print_(op);
-//   op2 << "Autores : " << t_livro.get_autores() << endl;
-//   op2 << "Quantidade de Exemplares : " << t_livro.get_qtdExemplares() <<
-//   endl; return op2;
-// }
 
-// ostream &operator<<(ostream &op, Periodico const &t_periodico) {
-//   ostream &op2 = t_periodico.print_(op);
-//   op2 << "Mes : " << t_periodico.get_mes() << endl;
-//   op2 << "Numero de edicao : " << t_periodico.get_numEdicao() << endl;
-//   return op2;
-// }
 ostream &Livro::print(ostream &op) const {
   op << "Autores : " << get_autores() << endl;
   op << "Quantidade de Exemplares : " << get_qtdExemplares() << endl;
@@ -154,7 +151,4 @@ ostream &Periodico::print(ostream &op) const {
   return op;
 }
 
-// ostream &operator<<(ostream &op, Publicacao const &t_publicacao) {
-//   return t_publicacao.print_(op);
-// }
 #endif

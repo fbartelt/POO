@@ -31,6 +31,7 @@ class Usuario {
         endereco(t_usuario.endereco),
         fone(t_usuario.fone),
         dataPenalizacao(t_usuario.dataPenalizacao){};
+  ~Usuario(){};
 
   // Getters
   string get_nome() const { return nome; };
@@ -46,8 +47,8 @@ class Usuario {
   friend ostream &operator<<(ostream &op, Usuario const &t_usuario);
 };
 
-inline void Usuario::set_dataPenalizacao(Date const &t_data){
- dataPenalizacao = t_data; 
+inline void Usuario::set_dataPenalizacao(Date const &t_data) {
+  dataPenalizacao = t_data;
 }
 
 bool Usuario::operator==(Usuario const &t_usuario) const {
@@ -57,7 +58,7 @@ bool Usuario::operator==(Usuario const &t_usuario) const {
   return r;
 }
 
-Usuario &Usuario::operator=(Usuario const &t_usuario){
+Usuario &Usuario::operator=(Usuario const &t_usuario) {
   nome = t_usuario.nome;
   cpf = t_usuario.cpf;
   endereco = t_usuario.endereco;

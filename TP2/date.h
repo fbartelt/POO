@@ -39,14 +39,11 @@ class Date {
   Date operator-(const Date &t_data) const;
   Date operator-(int days) const;
   bool operator>(const Date &t_data) const;
-
-  // Padroniza os elementos temporais, ignorando valores negativos e
-  // restringindo-os dentro dos intervalos: dia: [0, inf), hora: [0, 24), min:
-  // [0, 60), seg: [0, 60)
+  friend ostream &operator<<(ostream &op, Date const &t_data);
 };
 
 void Date::print_date() const {
-  cout << this->dia << " " << this->mes << " " << this->ano << " " << endl;
+  cout << this->dia << "/" << this->mes << "/" << this->ano << "/" << endl;
 }
 
 int Date::days_elapsed() const {
@@ -70,7 +67,7 @@ Date &Date::operator=(const Date &t_data) {
   return *this;
 }
 
-bool Date::operator==(const Date &t_data) const{
+bool Date::operator==(const Date &t_data) const {
   bool r = (ano == t_data.ano) && (mes == t_data.mes) && (dia == t_data.dia);
   return r;
 }
@@ -102,18 +99,12 @@ Date Date::operator-(int days) const {
 }
 
 bool Date::operator>(const Date &t_data) const {
-  if (t_data.ano > this->ano) {
-    return true;
-  } else if (t_data.mes > this->mes) {
-    return true;
-  } else {
-    if (t_data.dia > this->dia) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-  return false;
+  return (days_elapsed() > t_data.days_elapsed());
+}
+
+ostream &operator<<(ostream &op, Date const &t_data) {
+  op << t_data.dia << "/" << t_data.mes << "/" << t_data.ano;
+  return op;
 }
 
 #endif
